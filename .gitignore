@@ -1,0 +1,17 @@
+# JMeter specific files
+jmeter.log
+*.jtl
+*.log
+
+# Test Results
+/test-results/
+/results/
+/reports/
+/report/
+
+# JMeter backups
+*.jmx.bak
+
+# Operating System specific files
+.DS_Store
+Thumbs.db
