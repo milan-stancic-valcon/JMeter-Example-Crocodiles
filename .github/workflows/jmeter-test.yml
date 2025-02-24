@@ -7,9 +7,17 @@ on:
     branches: [ main ]
   workflow_dispatch:  # Allows manual trigger from GitHub UI
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   performance-test:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     
     steps:
     - uses: actions/checkout@v4
@@ -28,13 +36,24 @@ jobs:
           -j /test/results/jmeter.log \
           -e -o /test/results/dashboard
 
-    - name: Archive test results
-      if: always()  # Run even if tests fail
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+
+    - name: Upload Pages artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: results/dashboard
+
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
+
+    - name: Archive detailed test results
+      if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: jmeter-test-results
+        name: jmeter-detailed-results
         path: |
           results/results.jtl
           results/jmeter.log
-          results/dashboard/
         retention-days: 30
