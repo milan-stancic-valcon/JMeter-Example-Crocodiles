@@ -33,15 +33,31 @@ jobs:
           -j /test/results/jmeter.log \
           -e -o /test/results/dashboard
 
+    - name: Extract Test Metrics
+      if: github.event_name == 'pull_request'
+      run: |
+        # Get average response time from results.jtl
+        AVG_RESPONSE=$(awk -F',' 'NR>1 {sum+=$1} END {print sum/(NR-1)}' results/results.jtl || echo "N/A")
+        echo "AVG_RESPONSE=$AVG_RESPONSE" >> $GITHUB_ENV
+        
+        # Get total requests
+        TOTAL_REQUESTS=$(wc -l < results/results.jtl || echo "N/A")
+        echo "TOTAL_REQUESTS=$TOTAL_REQUESTS" >> $GITHUB_ENV
+        
+        # Get error rate
+        ERROR_COUNT=$(grep -c ",false," results/results.jtl || echo "0")
+        ERROR_RATE=$(awk -v err="$ERROR_COUNT" -v total="$TOTAL_REQUESTS" 'BEGIN {print (err/total)*100}' || echo "0")
+        echo "ERROR_RATE=$ERROR_RATE" >> $GITHUB_ENV
+
     - name: Comment PR with Results
       if: github.event_name == 'pull_request'
       run: |
-        COMMENT="## 🚀 Performance Test Results
+        PR_COMMENT="## 🚀 Performance Test Results
 
         ### Test Summary
-        - **Duration**: N/A
-        - **Total Requests**: N/A
-        - **Error Rate**: 0%
+        - **Average Response Time**: ${AVG_RESPONSE:-N/A} ms
+        - **Total Requests**: ${TOTAL_REQUESTS:-N/A}
+        - **Error Rate**: ${ERROR_RATE:-0}%
 
         ### 📊 Detailed Results
         - Download results from the Artifacts section below
@@ -53,10 +69,8 @@ jobs:
 
         > Note: Full dashboard will be available after merging to main branch."
 
-        gh auth token ${{ github.token }}
-        gh pr comment ${{ github.event.pull_request.number }} --body "$COMMENT"
+        echo "$PR_COMMENT" | gh pr comment ${{ github.event.pull_request.number }} --body-file -
       env:
-        GH_TOKEN: ${{ github.token }}
         GITHUB_TOKEN: ${{ github.token }}
 
     - name: Archive test results
