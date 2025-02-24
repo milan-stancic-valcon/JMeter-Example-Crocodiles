@@ -43,10 +43,22 @@ The GitHub Actions workflow automatically:
 3. Publishes results to GitHub Pages
 4. Archives detailed test results
 
-### Viewing Results
+## 📊 Test Results
 
-- **Dashboard**: Visit [https://<username>.github.io/<repository>/](https://<username>.github.io/<repository>/)
-- **Detailed Results**: Download from GitHub Actions artifacts
+### Automated PR Comments
+When you create a Pull Request, our GitHub Actions workflow will:
+1. Run the JMeter tests automatically
+2. Post a comment with test results summary
+3. Include links to:
+   - Full dashboard on GitHub Pages
+   - Detailed test results in workflow artifacts
+4. Show key metrics like duration, total requests, and error rate
+
+### GitHub Pages Dashboard
+Access the latest test results dashboard at:
+```
+https://<username>.github.io/<repository>/
+```
 
 ## 🛠️ Configuration
 
