@@ -1,0 +1,40 @@
+name: JMeter Performance Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # Allows manual trigger from GitHub UI
+
+jobs:
+  performance-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Build JMeter Docker image
+      run: docker build -t jmeter-test .
+      
+    - name: Run JMeter Tests
+      run: |
+        mkdir -p results
+        docker run --rm \
+          -v "${PWD}/results:/test/results" \
+          jmeter-test \
+          -n -t /test/k6-api-test-plan.jmx \
+          -l /test/results/results.jtl \
+          -j /test/results/jmeter.log \
+          -e -o /test/results/dashboard
+
+    - name: Archive test results
+      if: always()  # Run even if tests fail
+      uses: actions/upload-artifact@v4
+      with:
+        name: jmeter-test-results
+        path: |
+          results/results.jtl
+          results/jmeter.log
+          results/dashboard/
+        retention-days: 30
