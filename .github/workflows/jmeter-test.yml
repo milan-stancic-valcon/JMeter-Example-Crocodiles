@@ -7,6 +7,11 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+# Concurrency group to ensure one deployment at a time
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
 permissions:
   contents: read
   pages: write
@@ -49,12 +54,6 @@ jobs:
         SUCCESS_RATE=$(awk -v success="$SUCCESS_COUNT" -v total="$TOTAL_REQUESTS" 'BEGIN {printf "%.2f", (success/total)*100}')
         echo "SUCCESS_RATE=$SUCCESS_RATE" >> $GITHUB_ENV
 
-        # Extract other metrics from dashboard/statistics.json if it exists
-        if [ -f results/dashboard/statistics.json ]; then
-          echo "Found statistics.json"
-          cat results/dashboard/statistics.json
-        fi
-
     - name: Comment PR with Results
       if: github.event_name == 'pull_request'
       run: |
@@ -80,13 +79,11 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ github.token }}
 
-    - name: Archive test results
-      if: always()
-      uses: actions/upload-artifact@v4
+    - name: Upload Pages artifact
+      if: github.ref == 'refs/heads/main'
+      uses: actions/upload-pages-artifact@v3
       with:
-        name: jmeter-test-results
         path: results/dashboard
-        retention-days: 30
 
     - name: Archive detailed results
       if: always()
@@ -99,7 +96,7 @@ jobs:
         retention-days: 30
 
   deploy-pages:
-    if: github.ref == 'refs/heads/main'  # Only run on main branch
+    if: github.ref == 'refs/heads/main'
     needs: performance-test
     runs-on: ubuntu-latest
     environment:
@@ -107,19 +104,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     
     steps:
-    - name: Download dashboard artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: jmeter-test-results
-        path: dashboard
-
     - name: Setup Pages
       uses: actions/configure-pages@v4
-
-    - name: Upload Pages artifact
-      uses: actions/upload-pages-artifact@v3
-      with:
-        path: dashboard
 
     - name: Deploy to GitHub Pages
       id: deployment
