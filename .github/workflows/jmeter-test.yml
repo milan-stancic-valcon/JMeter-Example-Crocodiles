@@ -36,18 +36,24 @@ jobs:
     - name: Extract Test Metrics
       if: github.event_name == 'pull_request'
       run: |
-        # Get average response time from results.jtl
-        AVG_RESPONSE=$(awk -F',' 'NR>1 {sum+=$1} END {print sum/(NR-1)}' results/results.jtl || echo "N/A")
+        # Get average response time from results.jtl (elapsed time is in column 2)
+        AVG_RESPONSE=$(awk -F',' 'NR>1 {sum+=$2} END {printf "%.2f", sum/(NR-1)}' results/results.jtl || echo "N/A")
         echo "AVG_RESPONSE=$AVG_RESPONSE" >> $GITHUB_ENV
         
-        # Get total requests
-        TOTAL_REQUESTS=$(wc -l < results/results.jtl || echo "N/A")
+        # Get total requests (subtract header line)
+        TOTAL_REQUESTS=$(( $(wc -l < results/results.jtl) - 1 ))
         echo "TOTAL_REQUESTS=$TOTAL_REQUESTS" >> $GITHUB_ENV
         
-        # Get error rate
-        ERROR_COUNT=$(grep -c ",false," results/results.jtl || echo "0")
-        ERROR_RATE=$(awk -v err="$ERROR_COUNT" -v total="$TOTAL_REQUESTS" 'BEGIN {print (err/total)*100}' || echo "0")
-        echo "ERROR_RATE=$ERROR_RATE" >> $GITHUB_ENV
+        # Get success rate
+        SUCCESS_COUNT=$(grep -c ",true," results/results.jtl || echo "0")
+        SUCCESS_RATE=$(awk -v success="$SUCCESS_COUNT" -v total="$TOTAL_REQUESTS" 'BEGIN {printf "%.2f", (success/total)*100}')
+        echo "SUCCESS_RATE=$SUCCESS_RATE" >> $GITHUB_ENV
+
+        # Extract other metrics from dashboard/statistics.json if it exists
+        if [ -f results/dashboard/statistics.json ]; then
+          echo "Found statistics.json"
+          cat results/dashboard/statistics.json
+        fi
 
     - name: Comment PR with Results
       if: github.event_name == 'pull_request'
@@ -57,10 +63,11 @@ jobs:
         ### Test Summary
         - **Average Response Time**: ${AVG_RESPONSE:-N/A} ms
         - **Total Requests**: ${TOTAL_REQUESTS:-N/A}
-        - **Error Rate**: ${ERROR_RATE:-0}%
+        - **Success Rate**: ${SUCCESS_RATE:-0}%
 
         ### 📊 Detailed Results
         - Download results from the Artifacts section below
+        - View test artifacts for detailed metrics and graphs
 
         ### 🔍 Quick Links
         - Response Times Graph
