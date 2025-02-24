@@ -16,10 +16,6 @@ permissions:
 jobs:
   performance-test:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    
     steps:
     - uses: actions/checkout@v4
     
@@ -37,18 +33,6 @@ jobs:
           -j /test/results/jmeter.log \
           -e -o /test/results/dashboard
 
-    - name: Setup Pages
-      uses: actions/configure-pages@v4
-
-    - name: Upload Pages artifact
-      uses: actions/upload-pages-artifact@v3
-      with:
-        path: results/dashboard
-
-    - name: Deploy to GitHub Pages
-      id: deployment
-      uses: actions/deploy-pages@v4
-
     - name: Comment PR with Results
       if: github.event_name == 'pull_request'
       uses: actions/github-script@v7
@@ -62,15 +46,14 @@ jobs:
           - **Error Rate**: ${process.env.ERROR_RATE || '0%'}
           
           ### 📊 Detailed Results
-          - [View Full Dashboard](${process.env.DASHBOARD_URL})
-          - [Download Detailed Results](${process.env.ARTIFACTS_URL})
+          - Download results from the Artifacts section below
           
           ### 🔍 Quick Links
           - Response Times Graph
           - Throughput Graph
           - Error Analysis
           
-          > Note: This is an automated performance test report. Please review the full dashboard for detailed metrics.`;
+          > Note: Full dashboard will be available after merging to main branch.`;
           
           github.rest.issues.createComment({
             owner: context.repo.owner,
@@ -78,11 +61,16 @@ jobs:
             issue_number: context.issue.number,
             body: summary
           });
-      env:
-        DASHBOARD_URL: ${{ steps.deployment.outputs.page_url }}
-        ARTIFACTS_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
-    - name: Archive detailed test results
+    - name: Archive test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: jmeter-test-results
+        path: results/dashboard
+        retention-days: 30
+
+    - name: Archive detailed results
       if: always()
       uses: actions/upload-artifact@v4
       with:
@@ -91,3 +79,30 @@ jobs:
           results/results.jtl
           results/jmeter.log
         retention-days: 30
+
+  deploy-pages:
+    if: github.ref == 'refs/heads/main'  # Only run on main branch
+    needs: performance-test
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+    - name: Download dashboard artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: jmeter-test-results
+        path: dashboard
+
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+
+    - name: Upload Pages artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: dashboard
+
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
