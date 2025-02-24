@@ -55,10 +55,10 @@ jobs:
           
           > Note: Full dashboard will be available after merging to main branch.`;
           
-          github.rest.issues.createComment({
+          await github.rest.issues.createComment({
             owner: context.repo.owner,
             repo: context.repo.name,
-            issue_number: context.issue.number,
+            issue_number: context.payload.pull_request.number,
             body: summary
           });
 
