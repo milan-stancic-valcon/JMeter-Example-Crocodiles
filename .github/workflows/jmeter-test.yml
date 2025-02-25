@@ -54,6 +54,11 @@ jobs:
         SUCCESS_RATE=$(awk -v success="$SUCCESS_COUNT" -v total="$TOTAL_REQUESTS" 'BEGIN {printf "%.2f", (success/total)*100}')
         echo "SUCCESS_RATE=$SUCCESS_RATE" >> $GITHUB_ENV
 
+        # Get repository info for links
+        REPO_NAME=$(echo "$GITHUB_REPOSITORY" | cut -d'/' -f2)
+        echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
+        echo "GITHUB_USER=$(echo "$GITHUB_REPOSITORY" | cut -d'/' -f1)" >> $GITHUB_ENV
+
     - name: Comment PR with Results
       if: github.event_name == 'pull_request'
       run: |
@@ -65,16 +70,13 @@ jobs:
         - **Success Rate**: ${SUCCESS_RATE:-0}%
 
         ### 📊 Detailed Results
-        - Download results from the Artifacts section below
-        - View test artifacts for detailed metrics and graphs
+        - [View Full Dashboard]($PAGES_URL)
+        - [Download Results](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})
 
         ### 🔍 Quick Links
-        - Response Times Graph
-        - Throughput Graph
-        - Error Analysis
-
-        > Note: Full dashboard will be available after merging to main branch."
-
+        - [Response Times Over Time]($PAGES_URL/content/pages/OverTime.html#responseTimeOverTime)
+        - [Throughput Graph]($PAGES_URL/content/pages/Throughput.html#totalTPS)
+        
         echo "$PR_COMMENT" | gh pr comment ${{ github.event.pull_request.number }} --body-file -
       env:
         GITHUB_TOKEN: ${{ github.token }}
