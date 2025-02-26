@@ -54,10 +54,18 @@ jobs:
         SUCCESS_RATE=$(awk -v success="$SUCCESS_COUNT" -v total="$TOTAL_REQUESTS" 'BEGIN {printf "%.2f", (success/total)*100}')
         echo "SUCCESS_RATE=$SUCCESS_RATE" >> $GITHUB_ENV
 
+        # Get repository info for links
+        REPO_NAME=$(echo "$GITHUB_REPOSITORY" | cut -d'/' -f2)
+        echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
+        GITHUB_USER=$(echo "$GITHUB_REPOSITORY" | cut -d'/' -f1)
+        echo "GITHUB_USER=$GITHUB_USER" >> $GITHUB_ENV
+        echo "PAGES_URL=https://$GITHUB_USER.github.io/$REPO_NAME" >> $GITHUB_ENV
+
     - name: Comment PR with Results
       if: github.event_name == 'pull_request'
       run: |
-        PR_COMMENT="## 🚀 Performance Test Results
+        cat << EOF > pr_comment.md
+        ## 🚀 Performance Test Results
 
         ### Test Summary
         - **Average Response Time**: ${AVG_RESPONSE:-N/A} ms
@@ -65,17 +73,15 @@ jobs:
         - **Success Rate**: ${SUCCESS_RATE:-0}%
 
         ### 📊 Detailed Results
-        - Download results from the Artifacts section below
-        - View test artifacts for detailed metrics and graphs
+        - [View Full Dashboard](${PAGES_URL})
+        - [Download Results](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})
 
         ### 🔍 Quick Links
-        - Response Times Graph
-        - Throughput Graph
-        - Error Analysis
+        - [Response Times Over Time](${PAGES_URL}/content/pages/OverTime.html#responseTimeOverTime)
+        - [Throughput Graph](${PAGES_URL}/content/pages/Throughput.html#totalTPS)
+        EOF
 
-        > Note: Full dashboard will be available after merging to main branch."
-
-        echo "$PR_COMMENT" | gh pr comment ${{ github.event.pull_request.number }} --body-file -
+        gh pr comment ${{ github.event.pull_request.number }} --body-file pr_comment.md
       env:
         GITHUB_TOKEN: ${{ github.token }}
 
