@@ -1,5 +1,8 @@
 # Create results directory if it doesn't exist
-New-Item -ItemType Directory -Force -Path ".\results"
+New-Item -ItemType Directory -Force -Path "results" | Out-Null
+
+# Clean up existing results
+Remove-Item -Path "results\*" -Recurse -Force -ErrorAction SilentlyContinue
 
 # Build the Docker image
 docker build -t jmeter-test .
